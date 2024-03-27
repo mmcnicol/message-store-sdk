@@ -23,11 +23,7 @@ func TestSendEntry_Success(t *testing.T) {
 	defer server.Close()
 
 	//fmt.Println(server.URL)
-	host, portString, err := extractHostAndPort(server.URL)
-	if err != nil {
-		fmt.Println("Error:", err)
-	}
-	port, err := strconv.Atoi(portString)
+	host, port, err := extractHostAndPort(server.URL)
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
@@ -54,25 +50,43 @@ func TestSendEntry_Success(t *testing.T) {
 	assert.Equal(t, int64(123), offset)
 }
 
-func extractHostAndPort(urlString string) (string, string, error) {
+func extractHostAndPort(urlString string) (string, int, error) {
 	// Parse the URL
 	parsedURL, err := url.Parse(urlString)
 	if err != nil {
-		return "", "", err
+		return "", 0, err
 	}
 
 	// Extract host and port
 	host := parsedURL.Hostname()
-	port := parsedURL.Port()
+	portString := parsedURL.Port()
+
+	port, err := strconv.Atoi(portString)
+	if err != nil {
+		return "", 0, fmt.Errorf("error converting port int to string: %+v", err)
+	}
 
 	return host, port, nil
 }
 
 func TestSendEntry_Error(t *testing.T) {
+	// Mock HTTP server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Simulate error response
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	//fmt.Println(server.URL)
+	host, port, err := extractHostAndPort(server.URL)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
 	// Create a Producer with mock configuration
 	config := NewProducerConfig()
-	config.Host = "invalid-url" // Use an invalid URL
-	//config.Port = 80            // Use any available port
+	config.Host = host
+	config.Port = port
 
 	producer := NewProducer(config)
 
@@ -84,7 +98,7 @@ func TestSendEntry_Error(t *testing.T) {
 	}
 
 	// Send the entry
-	_, err := producer.SendEntry("topic1", entry)
+	_, err = producer.SendEntry("topic1", entry)
 
 	// Verify the error
 	assert.Error(t, err)

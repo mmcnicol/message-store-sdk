@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 	"time"
 
@@ -30,11 +29,7 @@ func TestGetEntry_Success(t *testing.T) {
 	defer server.Close()
 
 	//fmt.Println(server.URL)
-	host, portString, err := extractHostAndPort(server.URL)
-	if err != nil {
-		fmt.Println("Error:", err)
-	}
-	port, err := strconv.Atoi(portString)
+	host, port, err := extractHostAndPort(server.URL)
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
@@ -56,15 +51,28 @@ func TestGetEntry_Success(t *testing.T) {
 }
 
 func TestGetEntry_Error(t *testing.T) {
+	// Mock HTTP server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Simulate error response
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	//fmt.Println(server.URL)
+	host, port, err := extractHostAndPort(server.URL)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
 	// Create a Consumer with mock configuration
 	config := NewConsumerConfig()
-	config.Host = "invalid-url" // Use an invalid URL
-	config.Port = 80            // Use any available port
+	config.Host = host
+	config.Port = port
 
 	consumer := NewConsumer(config)
 
 	// Get an entry
-	_, err := consumer.GetEntry("topic1", 0)
+	_, err = consumer.GetEntry("topic1", 0)
 
 	// Verify the error
 	assert.Error(t, err)
