@@ -1,5 +1,11 @@
 # message-store-sdk
 
+to communicate with [message store server](https://github.com/mmcnicol/message-store-server) REST API
+
+a Producer can send an entry to a topic
+
+a Consumer can get an entry from a topic
+
 ## usage
 
 ```
