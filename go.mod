@@ -1,6 +1,6 @@
 module github.com/mmcnicol/message-store-sdk
 
-go 1.23
+go 1.20
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
