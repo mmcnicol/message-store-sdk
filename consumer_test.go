@@ -1,6 +1,77 @@
 package messagestoresdk
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"testing"
+	"time"
+
+	ms "github.com/mmcnicol/message-store"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestGetEntry_Success(t *testing.T) {
+	// Mock HTTP server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Simulate successful response
+		// Create a mock entry
+		entry := ms.Entry{
+			Key:       []byte("key"),
+			Value:     []byte("value"),
+			Timestamp: time.Now(),
+		}
+		//w.Header().Set("x-offset", "123")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(entry)
+	}))
+	defer server.Close()
+
+	//fmt.Println(server.URL)
+	host, portString, err := extractHostAndPort(server.URL)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+	port, err := strconv.Atoi(portString)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
+	// Create a Consumer with mock configuration
+	config := NewConsumerConfig()
+	config.Host = host
+	config.Port = port
+
+	consumer := NewConsumer(config)
+
+	// Get an entry
+	topicEntry, err := consumer.GetEntry("topic1", 0)
+
+	// Verify the result
+	assert.NoError(t, err)
+	assert.Equal(t, string(topicEntry.Key), "key")
+	assert.Equal(t, string(topicEntry.Value), "value")
+}
+
+func TestGetEntry_Error(t *testing.T) {
+	// Create a Consumer with mock configuration
+	config := NewConsumerConfig()
+	config.Host = "invalid-url" // Use an invalid URL
+	config.Port = 80            // Use any available port
+
+	consumer := NewConsumer(config)
+
+	// Get an entry
+	_, err := consumer.GetEntry("topic1", 0)
+
+	// Verify the error
+	assert.Error(t, err)
+}
+
+/*
+import (
 	"testing"
 
 	ms "github.com/mmcnicol/message-store"
@@ -23,11 +94,9 @@ func TestGetEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetEntry(), err: %+v", err)
 	}
-	/*
-		if got == nil {
-			t.Fatalf("GetEntry(), got:%+v, want: %+v", got, entry1)
-		}
-	*/
+	//if got == nil {
+	//	t.Fatalf("GetEntry(), got:%+v, want: %+v", got, entry1)
+	//}
 	if string(got.Key) != string(entry1.Key) {
 		t.Fatalf("GetEntry() Key, got:%s, want:%s", string(got.Key), string(entry1.Key))
 	}
@@ -43,11 +112,9 @@ func TestGetEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetEntry(), err: %+v", err)
 	}
-	/*
-		if got == nil {
-			t.Fatalf("GetEntry(), got:%+v, want: %+v", got, entry1)
-		}
-	*/
+	//if got == nil {
+	//	t.Fatalf("GetEntry(), got:%+v, want: %+v", got, entry1)
+	//}
 	if string(got.Key) != string(entry2.Key) {
 		t.Fatalf("GetEntry() Key, got:%s, want:%s", string(got.Key), string(entry2.Key))
 	}
@@ -55,3 +122,4 @@ func TestGetEntry(t *testing.T) {
 		t.Fatalf("GetEntry() Value, got:%s, want:%s", string(got.Value), string(entry2.Value))
 	}
 }
+*/
