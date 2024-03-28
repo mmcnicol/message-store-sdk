@@ -58,8 +58,14 @@ func (p *Producer) SendEntry(topic string, entry ms.Entry) (int64, error) {
 		return 0, fmt.Errorf("error marshaling JSON: %v", err)
 	}
 
+	// Create a custom HTTP client with a timeout
+	timeout := 5 * time.Second // Set timeout to 5 seconds
+	httpClient := &http.Client{
+		Timeout: timeout,
+	}
 	endpoint := fmt.Sprintf("http://%s:%d/produce?topic=%s", p.Config.Host, p.Config.Port, topic)
-	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(jsonData))
+
+	resp, err := httpClient.Post(endpoint, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return 0, fmt.Errorf("error sending POST request: %v", err)
 	}
