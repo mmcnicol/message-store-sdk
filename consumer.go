@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	ms "github.com/mmcnicol/message-store"
 )
 
 // ConsumerConfig represents the configuration for the message consumer
 type ConsumerConfig struct {
-	Host string // Host of the message store server
-	Port int    // Port of the message store server
+	Host    string        // Host of the message store server
+	Port    int           // Port of the message store server
+	Timeout time.Duration // Timeout for HTTP requests
 }
 
 // NewConsumerConfig creates a new instance of ConsumerConfig
@@ -28,6 +30,10 @@ type Consumer struct {
 
 // NewConsumer creates a new instance of Producer
 func NewConsumer(config *ConsumerConfig) *Consumer {
+	// Check if timeout is zero, and if so, default it to 30 seconds
+	if config.Timeout == 0 {
+		config.Timeout = 30 * time.Second
+	}
 	return &Consumer{
 		Config: config,
 	}
@@ -36,8 +42,12 @@ func NewConsumer(config *ConsumerConfig) *Consumer {
 // GetEntry retrieves a topic entry from the message store server
 func (c *Consumer) GetEntry(topic string, offset int64) (ms.Entry, error) {
 
+	// Create a custom HTTP client with a timeout
+	httpClient := &http.Client{
+		Timeout: c.Config.Timeout,
+	}
 	endpoint := fmt.Sprintf("http://%s:%d/consume?topic=%s&offset=%d", c.Config.Host, c.Config.Port, topic, offset)
-	resp, err := http.Get(endpoint)
+	resp, err := httpClient.Get(endpoint)
 	if err != nil {
 		return ms.Entry{}, fmt.Errorf("error sending GET request: %v", err)
 	}
