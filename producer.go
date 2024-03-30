@@ -21,8 +21,9 @@ type TopicEntry struct {
 
 // ProducerConfig represents the configuration for the message producer
 type ProducerConfig struct {
-	Host string // Host of the message store server
-	Port int    // Port of the message store server
+	Host    string        // Host of the message store server
+	Port    int           // Port of the message store server
+	Timeout time.Duration // Timeout for HTTP requests
 }
 
 // NewProducerConfig creates a new instance of ProducerConfig
@@ -37,6 +38,10 @@ type Producer struct {
 
 // NewProducer creates a new instance of Producer
 func NewProducer(config *ProducerConfig) *Producer {
+	// Check if timeout is zero, and if so, default it to 30 seconds
+	if config.Timeout == 0 {
+		config.Timeout = 30 * time.Second
+	}
 	return &Producer{
 		Config: config,
 	}
@@ -59,9 +64,8 @@ func (p *Producer) SendEntry(topic string, entry ms.Entry) (int64, error) {
 	}
 
 	// Create a custom HTTP client with a timeout
-	timeout := 5 * time.Second // Set timeout to 5 seconds
 	httpClient := &http.Client{
-		Timeout: timeout,
+		Timeout: p.Config.Timeout,
 	}
 	endpoint := fmt.Sprintf("http://%s:%d/produce?topic=%s", p.Config.Host, p.Config.Port, topic)
 
