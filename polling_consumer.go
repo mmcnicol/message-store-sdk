@@ -42,7 +42,7 @@ func NewPollingConsumer(config *PollingConsumerConfig) *PollingConsumer {
 // PollForNextEntry reads an entry from the given offset+1 from the specified topic, after sleeping for the specified poll interval
 func (c *PollingConsumer) PollForNextEntry(topic string, offset int64, pollDuration time.Duration) (*ms.Entry, error) {
 
-	// Construct the endpoint URL with the pollDuration parameter
+	// Construct the endpoint URL
 	endpoint := fmt.Sprintf("http://%s:%d/consume?topic=%s&offset=%d&pollDuration=%s", c.Config.Host, c.Config.Port, topic, offset, pollDuration.String())
 
 	// Create a custom HTTP client with a timeout
@@ -50,6 +50,7 @@ func (c *PollingConsumer) PollForNextEntry(topic string, offset int64, pollDurat
 		Timeout: c.Config.Timeout,
 	}
 
+	// perform HTTP request
 	resp, err := httpClient.Get(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send GET request: %v", err)

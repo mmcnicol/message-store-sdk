@@ -42,11 +42,15 @@ func NewConsumer(config *ConsumerConfig) *Consumer {
 // GetEntry retrieves a topic entry from the message store server
 func (c *Consumer) GetEntry(topic string, offset int64) (*ms.Entry, error) {
 
+	// Construct the endpoint URL
+	endpoint := fmt.Sprintf("http://%s:%d/consume?topic=%s&offset=%d", c.Config.Host, c.Config.Port, topic, offset)
+
 	// Create a custom HTTP client with a timeout
 	httpClient := &http.Client{
 		Timeout: c.Config.Timeout,
 	}
-	endpoint := fmt.Sprintf("http://%s:%d/consume?topic=%s&offset=%d", c.Config.Host, c.Config.Port, topic, offset)
+
+	// perform HTTP request
 	resp, err := httpClient.Get(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send GET request: %v", err)
@@ -66,7 +70,7 @@ func (c *Consumer) GetEntry(topic string, offset int64) (*ms.Entry, error) {
 	key, err := base64.StdEncoding.DecodeString(topicEntry.Key)
 	if err != nil {
 		log.Fatal("error:", err)
-		return nil, fmt.Errorf("failed tp base64 decode string for Key: %v", err)
+		return nil, fmt.Errorf("failed to base64 decode string for Key: %v", err)
 	}
 	value, err := base64.StdEncoding.DecodeString(topicEntry.Value)
 	if err != nil {
