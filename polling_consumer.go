@@ -11,49 +11,54 @@ import (
 	ms "github.com/mmcnicol/message-store"
 )
 
-// ConsumerConfig represents the configuration for the message consumer
-type ConsumerConfig struct {
+// PollingConsumerConfig represents the configuration for the message polling consumer
+type PollingConsumerConfig struct {
 	Host    string        // Host of the message store server
 	Port    int           // Port of the message store server
 	Timeout time.Duration // Timeout for HTTP requests
 }
 
-// NewConsumerConfig creates a new instance of ConsumerConfig
-func NewConsumerConfig() *ConsumerConfig {
-	return &ConsumerConfig{}
+// NewPollingConsumerConfig creates a new instance of PollingConsumerConfig
+func NewPollingConsumerConfig() *PollingConsumerConfig {
+	return &PollingConsumerConfig{}
 }
 
-// Consumer represents a message consumer
-type Consumer struct {
-	Config *ConsumerConfig // Configuration for the message consumer
+// PollingConsumer represents a message polling consumer
+type PollingConsumer struct {
+	Config *PollingConsumerConfig // Configuration for the message polling consumer
 }
 
-// NewConsumer creates a new instance of Consumer
-func NewConsumer(config *ConsumerConfig) *Consumer {
+// NewPollingConsumer creates a new instance of PollingConsumer
+func NewPollingConsumer(config *PollingConsumerConfig) *PollingConsumer {
 	// Check if timeout is zero, and if so, default it to 30 seconds
 	if config.Timeout == 0 {
 		config.Timeout = 30 * time.Second
 	}
-	return &Consumer{
+	return &PollingConsumer{
 		Config: config,
 	}
 }
 
-// GetEntry retrieves a topic entry from the message store server
-func (c *Consumer) GetEntry(topic string, offset int64) (*ms.Entry, error) {
+// PollForNextEntry reads an entry from the given offset+1 from the specified topic, after sleeping for the specified poll interval
+func (c *PollingConsumer) PollForNextEntry(topic string, offset int64, pollDuration time.Duration) (*ms.Entry, error) {
+
+	// Construct the endpoint URL with the pollDuration parameter
+	endpoint := fmt.Sprintf("http://%s:%d/consume?topic=%s&offset=%d&pollDuration=%s", c.Config.Host, c.Config.Port, topic, offset, pollDuration.String())
 
 	// Create a custom HTTP client with a timeout
 	httpClient := &http.Client{
 		Timeout: c.Config.Timeout,
 	}
-	endpoint := fmt.Sprintf("http://%s:%d/consume?topic=%s&offset=%d", c.Config.Host, c.Config.Port, topic, offset)
+
 	resp, err := httpClient.Get(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send GET request: %v", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode == http.StatusNoContent {
+		return nil, nil
+	} else if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
@@ -66,7 +71,7 @@ func (c *Consumer) GetEntry(topic string, offset int64) (*ms.Entry, error) {
 	key, err := base64.StdEncoding.DecodeString(topicEntry.Key)
 	if err != nil {
 		log.Fatal("error:", err)
-		return nil, fmt.Errorf("failed tp base64 decode string for Key: %v", err)
+		return nil, fmt.Errorf("failed to decode base64 string for Key: %v", err)
 	}
 	value, err := base64.StdEncoding.DecodeString(topicEntry.Value)
 	if err != nil {
