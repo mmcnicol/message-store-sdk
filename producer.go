@@ -60,18 +60,21 @@ func (p *Producer) SendEntry(topic string, entry ms.Entry) (int64, error) {
 
 	jsonData, err := json.Marshal(entry)
 	if err != nil {
-		return 0, fmt.Errorf("error marshaling JSON: %v", err)
+		return 0, fmt.Errorf("failed to marshal JSON: %v", err)
 	}
+
+	// Construct the endpoint URL
+	endpoint := fmt.Sprintf("http://%s:%d/produce?topic=%s", p.Config.Host, p.Config.Port, topic)
 
 	// Create a custom HTTP client with a timeout
 	httpClient := &http.Client{
 		Timeout: p.Config.Timeout,
 	}
-	endpoint := fmt.Sprintf("http://%s:%d/produce?topic=%s", p.Config.Host, p.Config.Port, topic)
 
+	// perform HTTP request
 	resp, err := httpClient.Post(endpoint, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return 0, fmt.Errorf("error sending POST request: %v", err)
+		return 0, fmt.Errorf("failed to send POST request: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -82,7 +85,7 @@ func (p *Producer) SendEntry(topic string, entry ms.Entry) (int64, error) {
 	offsetHeader := resp.Header.Get("x-offset")
 	offset, err := strconv.ParseInt(offsetHeader, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("error parsing offset header: %v", err)
+		return 0, fmt.Errorf("failed to parse offset header: %v", err)
 	}
 
 	return offset, nil
